@@ -2,10 +2,10 @@ import Input, {InputProps} from "./Input";
 
 export default function AmountInput(props:InputProps) {
     return (
-        <div className="bg-blue-950 border border-white/10">
+        <div className="flex items-center bg-blue-950 border border-white/10 rounded-lg">
             <Input 
                 placeholder="Amount"
-                className="text-right"
+                className="text-right border-0 w-24 pl-2 bg-transparent text-2xl"
                 value={props.value} 
                 onChange={props.onChange}
             /> 
