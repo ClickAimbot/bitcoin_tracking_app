@@ -1,9 +1,61 @@
 import AmountInput from './AmountInput';
-import { useState } from 'react';
+import axios from 'axios';
+import { useState, useEffect } from 'react';
 import ResultRow from './ResultRow';
+import {sortBy} from 'lodash';
+import useDebouncedEffect from 'use-debounced-effect';
+import LoadingSkeleton from './LoadingSkeleton';
+
+type CachedValue = {
+  provider: string;
+  btc: string;
+};
+
+type OfferResults = {
+  [key: string]: string
+};
+
+const defaultAmount = '100';
 
 function App() {
-  const [amount, setAmount] = useState(100);
+  const [prevAmount, setPrevAmount] = useState(defaultAmount); 
+  const [amount, setAmount] = useState(defaultAmount);
+  const [cachedValues, setCachedValues] = useState<CachedValue[]>([]);
+  const [offerResults, setOfferResults] = useState<OfferResults>({}); 
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get('https://1q5gskya7f.us.aircode.run/cachedValues')
+      .then(res => {
+        setCachedValues(res.data);
+        setLoading(false);
+      })
+  }, []);
+
+  useDebouncedEffect(() => {
+    if (amount === defaultAmount) return;
+    if (amount !== prevAmount) {
+      setLoading(true);
+      axios
+        .get(`https://1q5gskya7f.us.aircode.run/offers?amount=${amount}`)
+        .then(res => {
+          setLoading(false);
+          setOfferResults(res.data);
+          setPrevAmount(amount);
+        })
+    }
+  }, 300, [amount])
+
+  const sortedCache:CachedValue[] = sortBy(cachedValues, 'btc').reverse();
+  const sortedResults:OfferResults[] = sortBy(Object.keys(offerResults).map(provider => ({
+      provider, 
+      btc:offerResults[provider]
+  })), 'btc').reverse();
+
+  const showCached = amount === defaultAmount;
+
+  const rows = showCached ? sortedCache : sortedResults;
+
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="uppercase text-6xl text-center font-bold bg-gradient-to-br from-purple-600 to-sky-400 bg-clip-text text-transparent from-35%">
@@ -16,10 +68,16 @@ function App() {
         />
       </div>
       <div className='mt-6'>
-        <ResultRow />
-        <ResultRow />
-        <ResultRow />
-        <ResultRow />
+        {loading && (
+          <LoadingSkeleton />
+        )}
+        {!loading && rows.map(result => (
+          <ResultRow 
+            key={result.provider}
+            providerName={result.provider} 
+            btc={result.btc}    
+          />
+        ))}
       </div>
     </main>
   )
